@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, CheckCircle2, XCircle, Flame, Trophy, CalendarDays, TrendingUp } from "lucide-react";
+import { Camera, CheckCircle2, Flame, Trophy, CalendarDays, TrendingUp } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import PhotoVerification from "@/components/PhotoVerification";
 
 const mockWeek = [
   { day: "Lun", done: true },
@@ -14,7 +15,7 @@ const mockWeek = [
 ];
 
 const Dashboard = () => {
-  const [showPhotoSuccess, setShowPhotoSuccess] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
 
   const totalSessions = 48;
   const completedSessions = 18;
@@ -126,43 +127,18 @@ const Dashboard = () => {
       {/* Take Photo CTA */}
       <motion.button
         whileTap={{ scale: 0.97 }}
-        onClick={() => setShowPhotoSuccess(true)}
+        onClick={() => setShowVerification(true)}
         className="w-full py-4 rounded-xl gradient-primary text-primary-foreground font-bold text-lg flex items-center justify-center gap-3 glow-box-strong"
       >
         <Camera className="w-6 h-6" />
         VALIDER MA SÉANCE
       </motion.button>
 
-      {/* Photo Success Modal */}
-      {showPhotoSuccess && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-background/90 z-50 flex items-center justify-center px-6"
-          onClick={() => setShowPhotoSuccess(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-glass rounded-2xl p-8 text-center max-w-sm w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-20 h-20 rounded-full gradient-primary mx-auto mb-4 flex items-center justify-center glow-box-strong">
-              <CheckCircle2 className="w-10 h-10 text-primary-foreground" />
-            </div>
-            <h2 className="text-3xl font-display text-foreground mb-2">SÉANCE VALIDÉE !</h2>
-            <p className="text-muted-foreground mb-6">
-              L'IA a confirmé ta présence à la salle. Continue comme ça ! 💪
-            </p>
-            <button
-              onClick={() => setShowPhotoSuccess(false)}
-              className="w-full py-3 rounded-xl bg-secondary text-secondary-foreground font-bold"
-            >
-              FERMER
-            </button>
-          </motion.div>
-        </motion.div>
-      )}
+      <PhotoVerification
+        open={showVerification}
+        onClose={() => setShowVerification(false)}
+        onVerified={() => setShowVerification(false)}
+      />
 
       <BottomNav />
     </div>
