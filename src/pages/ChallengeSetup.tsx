@@ -1,13 +1,19 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Minus, Plus, TrendingUp, AlertTriangle } from "lucide-react";
+import { Minus, Plus, TrendingUp, AlertTriangle, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import { addMonths } from "date-fns";
 
 const ChallengeSetup = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [sessionsPerWeek, setSessionsPerWeek] = useState(3);
   const [months, setMonths] = useState(3);
   const [bet, setBet] = useState(50);
+  const [saving, setSaving] = useState(false);
 
   const odds = useMemo(() => {
     const sessionFactor = sessionsPerWeek <= 2 ? 1.2 : sessionsPerWeek <= 4 ? 1.8 : 2.5;
@@ -20,10 +26,37 @@ const ChallengeSetup = () => {
   const difficultyLabel = odds < 2 ? "FACILE" : odds < 3 ? "MOYEN" : odds < 4 ? "DIFFICILE" : "EXTRÊME";
   const difficultyColor = odds < 2 ? "text-success" : odds < 3 ? "text-odds" : odds < 4 ? "text-warning" : "text-destructive";
 
+  const handleValidate = async () => {
+    if (!user) return;
+    setSaving(true);
+
+    const startDate = new Date();
+    const endDate = addMonths(startDate, months);
+
+    const { error } = await supabase.from("challenges").insert({
+      user_id: user.id,
+      sessions_per_week: sessionsPerWeek,
+      duration_months: months,
+      bet_amount: bet,
+      odds_multiplier: odds,
+      status: "active",
+      start_date: startDate.toISOString().split("T")[0],
+      end_date: endDate.toISOString().split("T")[0],
+    });
+
+    if (error) {
+      toast.error("Erreur lors de la création du défi");
+      console.error(error);
+    } else {
+      toast.success("Défi créé ! 💪");
+      navigate("/dashboard");
+    }
+    setSaving(false);
+  };
+
   return (
     <div className="min-h-screen bg-background px-6 pt-12 pb-8">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        {/* Header */}
         <h1 className="text-4xl font-display text-neon mb-1">CRÉE TON DÉFI</h1>
         <p className="text-muted-foreground text-sm mb-8">Configure ton engagement et découvre ta cote</p>
 
@@ -33,17 +66,11 @@ const ChallengeSetup = () => {
             Séances par semaine
           </label>
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => setSessionsPerWeek(Math.max(1, sessionsPerWeek - 1))}
-              className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center"
-            >
+            <button onClick={() => setSessionsPerWeek(Math.max(1, sessionsPerWeek - 1))} className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
               <Minus className="w-4 h-4 text-secondary-foreground" />
             </button>
             <span className="text-5xl font-display text-foreground">{sessionsPerWeek}</span>
-            <button
-              onClick={() => setSessionsPerWeek(Math.min(7, sessionsPerWeek + 1))}
-              className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center"
-            >
+            <button onClick={() => setSessionsPerWeek(Math.min(7, sessionsPerWeek + 1))} className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
               <Plus className="w-4 h-4 text-secondary-foreground" />
             </button>
           </div>
@@ -55,17 +82,11 @@ const ChallengeSetup = () => {
             Durée (mois)
           </label>
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => setMonths(Math.max(1, months - 1))}
-              className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center"
-            >
+            <button onClick={() => setMonths(Math.max(1, months - 1))} className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
               <Minus className="w-4 h-4 text-secondary-foreground" />
             </button>
             <span className="text-5xl font-display text-foreground">{months}</span>
-            <button
-              onClick={() => setMonths(Math.min(12, months + 1))}
-              className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center"
-            >
+            <button onClick={() => setMonths(Math.min(12, months + 1))} className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
               <Plus className="w-4 h-4 text-secondary-foreground" />
             </button>
           </div>
@@ -77,36 +98,24 @@ const ChallengeSetup = () => {
             Mise mensuelle (€)
           </label>
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => setBet(Math.max(10, bet - 10))}
-              className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center"
-            >
+            <button onClick={() => setBet(Math.max(10, bet - 10))} className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
               <Minus className="w-4 h-4 text-secondary-foreground" />
             </button>
             <span className="text-5xl font-display text-foreground">{bet}€</span>
-            <button
-              onClick={() => setBet(Math.min(500, bet + 10))}
-              className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center"
-            >
+            <button onClick={() => setBet(Math.min(500, bet + 10))} className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
               <Plus className="w-4 h-4 text-secondary-foreground" />
             </button>
           </div>
         </div>
 
         {/* Odds Card */}
-        <motion.div
-          initial={{ scale: 0.95 }}
-          animate={{ scale: 1 }}
-          className="bg-glass rounded-xl p-5 mb-4 border border-primary/20"
-        >
+        <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-glass rounded-xl p-5 mb-4 border border-primary/20">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-odds" />
               <span className="text-sm text-muted-foreground uppercase tracking-wider">Ta cote</span>
             </div>
-            <span className={`text-sm font-bold uppercase ${difficultyColor}`}>
-              {difficultyLabel}
-            </span>
+            <span className={`text-sm font-bold uppercase ${difficultyColor}`}>{difficultyLabel}</span>
           </div>
           <div className="text-center">
             <span className="text-6xl font-display text-odds">{odds}x</span>
@@ -141,10 +150,11 @@ const ChallengeSetup = () => {
         {/* CTA */}
         <motion.button
           whileTap={{ scale: 0.97 }}
-          onClick={() => navigate("/dashboard")}
-          className="w-full py-4 rounded-xl gradient-primary text-primary-foreground font-bold text-lg glow-box-strong"
+          onClick={handleValidate}
+          disabled={saving}
+          className="w-full py-4 rounded-xl gradient-primary text-primary-foreground font-bold text-lg glow-box-strong flex items-center justify-center gap-2 disabled:opacity-50"
         >
-          VALIDER MON DÉFI
+          {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "VALIDER MON DÉFI"}
         </motion.button>
       </motion.div>
     </div>

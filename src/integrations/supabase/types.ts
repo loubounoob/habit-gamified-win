@@ -14,7 +14,116 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      challenges: {
+        Row: {
+          bet_amount: number
+          created_at: string
+          duration_months: number
+          end_date: string | null
+          id: string
+          odds_multiplier: number
+          sessions_per_week: number
+          start_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bet_amount?: number
+          created_at?: string
+          duration_months?: number
+          end_date?: string | null
+          id?: string
+          odds_multiplier?: number
+          sessions_per_week?: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bet_amount?: number
+          created_at?: string
+          duration_months?: number
+          end_date?: string | null
+          id?: string
+          odds_multiplier?: number
+          sessions_per_week?: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      gym_sessions: {
+        Row: {
+          approved: boolean
+          challenge_id: string
+          confidence: number | null
+          created_at: string
+          id: string
+          reason: string | null
+          user_id: string
+          verified_at: string
+        }
+        Insert: {
+          approved?: boolean
+          challenge_id: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id: string
+          verified_at?: string
+        }
+        Update: {
+          approved?: boolean
+          challenge_id?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id?: string
+          verified_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gym_sessions_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
