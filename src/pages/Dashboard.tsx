@@ -1,29 +1,117 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Camera, CheckCircle2, Flame, Trophy, CalendarDays, TrendingUp } from "lucide-react";
+import { Camera, CheckCircle2, Flame, Trophy, CalendarDays, TrendingUp, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import PhotoVerification from "@/components/PhotoVerification";
-
-const mockWeek = [
-  { day: "Lun", done: true },
-  { day: "Mar", done: true },
-  { day: "Mer", done: false },
-  { day: "Jeu", done: true },
-  { day: "Ven", done: false, today: true },
-  { day: "Sam", done: false },
-  { day: "Dim", done: false },
-];
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { startOfWeek, endOfWeek, eachDayOfInterval, format, isSameDay, isToday } from "date-fns";
+import { fr } from "date-fns/locale";
 
 const Dashboard = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [showVerification, setShowVerification] = useState(false);
+  const [challenge, setChallenge] = useState<any>(null);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const totalSessions = 48;
-  const completedSessions = 18;
-  const progress = (completedSessions / totalSessions) * 100;
-  const streak = 5;
-  const odds = 2.7;
-  const bet = 50;
-  const months = 3;
+  const fetchData = async () => {
+    if (!user) return;
+    setLoading(true);
+
+    const { data: challengeData } = await supabase
+      .from("challenges")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    setChallenge(challengeData);
+
+    if (challengeData) {
+      const { data: sessionsData } = await supabase
+        .from("gym_sessions")
+        .select("*")
+        .eq("challenge_id", challengeData.id)
+        .eq("approved", true);
+
+      setSessions(sessionsData || []);
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [user]);
+
+  const weekDays = useMemo(() => {
+    const now = new Date();
+    const start = startOfWeek(now, { weekStartsOn: 1 });
+    const end = endOfWeek(now, { weekStartsOn: 1 });
+    return eachDayOfInterval({ start, end }).map((day) => ({
+      label: format(day, "EEE", { locale: fr }).slice(0, 3),
+      date: day,
+      today: isToday(day),
+      done: sessions.some((s) => isSameDay(new Date(s.verified_at), day)),
+    }));
+  }, [sessions]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (!challenge) {
+    return (
+      <div className="min-h-screen bg-background px-6 pt-10 pb-24 flex flex-col items-center justify-center text-center">
+        <h1 className="text-3xl font-display text-foreground mb-4">AUCUN DÉFI ACTIF</h1>
+        <p className="text-muted-foreground mb-6">Crée ton premier défi pour commencer</p>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => navigate("/challenge")}
+          className="py-4 px-8 rounded-xl gradient-primary text-primary-foreground font-bold text-lg glow-box-strong"
+        >
+          CRÉER UN DÉFI
+        </motion.button>
+        <BottomNav />
+      </div>
+    );
+  }
+
+  const totalSessions = challenge.sessions_per_week * 4 * challenge.duration_months;
+  const completedSessions = sessions.length;
+  const progress = totalSessions > 0 ? (completedSessions / totalSessions) * 100 : 0;
+  const odds = Number(challenge.odds_multiplier);
+  const bet = challenge.bet_amount;
+  const months = challenge.duration_months;
+
+  // Calculate streak
+  const sortedSessions = [...sessions].sort((a, b) => new Date(b.verified_at).getTime() - new Date(a.verified_at).getTime());
+  let streak = 0;
+  if (sortedSessions.length > 0) {
+    let checkDate = new Date();
+    for (const s of sortedSessions) {
+      const sessionDate = new Date(s.verified_at);
+      const diffDays = Math.floor((checkDate.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays <= 1) {
+        streak++;
+        checkDate = sessionDate;
+      } else break;
+    }
+  }
+
+  const handleVerified = async () => {
+    setShowVerification(false);
+    await fetchData();
+  };
 
   return (
     <div className="min-h-screen bg-background px-6 pt-10 pb-24">
@@ -40,25 +128,11 @@ const Dashboard = () => {
       </div>
 
       {/* Progress Ring */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-glass rounded-2xl p-6 mb-4 text-center"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-glass rounded-2xl p-6 mb-4 text-center">
         <div className="relative w-40 h-40 mx-auto mb-4">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
-            <circle
-              cx="60" cy="60" r="52"
-              fill="none"
-              stroke="hsl(var(--secondary))"
-              strokeWidth="8"
-            />
-            <circle
-              cx="60" cy="60" r="52"
-              fill="none"
-              stroke="hsl(var(--primary))"
-              strokeWidth="8"
-              strokeLinecap="round"
+            <circle cx="60" cy="60" r="52" fill="none" stroke="hsl(var(--secondary))" strokeWidth="8" />
+            <circle cx="60" cy="60" r="52" fill="none" stroke="hsl(var(--primary))" strokeWidth="8" strokeLinecap="round"
               strokeDasharray={`${2 * Math.PI * 52}`}
               strokeDashoffset={`${2 * Math.PI * 52 * (1 - progress / 100)}`}
               style={{ filter: "drop-shadow(0 0 8px hsl(110 100% 55% / 0.5))" }}
@@ -81,20 +155,12 @@ const Dashboard = () => {
           <span className="text-sm text-muted-foreground uppercase tracking-wider">Cette semaine</span>
         </div>
         <div className="flex justify-between">
-          {mockWeek.map((d) => (
-            <div key={d.day} className="flex flex-col items-center gap-2">
-              <span className={`text-xs ${d.today ? "text-primary font-bold" : "text-muted-foreground"}`}>
-                {d.day}
-              </span>
-              <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center ${
-                  d.done
-                    ? "gradient-primary glow-box"
-                    : d.today
-                    ? "border-2 border-primary"
-                    : "bg-secondary"
-                }`}
-              >
+          {weekDays.map((d) => (
+            <div key={d.label} className="flex flex-col items-center gap-2">
+              <span className={`text-xs ${d.today ? "text-primary font-bold" : "text-muted-foreground"}`}>{d.label}</span>
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                d.done ? "gradient-primary glow-box" : d.today ? "border-2 border-primary" : "bg-secondary"
+              }`}>
                 {d.done ? (
                   <CheckCircle2 className="w-4 h-4 text-primary-foreground" />
                 ) : d.today ? (
@@ -120,7 +186,7 @@ const Dashboard = () => {
             <Trophy className="w-4 h-4 text-primary" />
             <span className="text-xs text-muted-foreground">RÉCOMPENSE</span>
           </div>
-          <span className="text-3xl font-display text-primary">{Math.round(bet * months * odds)}€</span>
+          <span className="text-3xl font-display text-primary">{Math.round(bet * odds)}€</span>
         </div>
       </div>
 
@@ -137,7 +203,8 @@ const Dashboard = () => {
       <PhotoVerification
         open={showVerification}
         onClose={() => setShowVerification(false)}
-        onVerified={() => setShowVerification(false)}
+        onVerified={handleVerified}
+        challengeId={challenge.id}
       />
 
       <BottomNav />

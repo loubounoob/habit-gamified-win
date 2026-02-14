@@ -1,6 +1,12 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { User, Bell, MapPin, CreditCard, LogOut, ChevronRight, Shield } from "lucide-react";
+import { User, Bell, MapPin, CreditCard, LogOut, ChevronRight, Shield, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 const menuItems = [
   { icon: User, label: "Mon profil", desc: "Infos personnelles" },
@@ -11,40 +17,88 @@ const menuItems = [
 ];
 
 const Profile = () => {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<any>(null);
+  const [stats, setStats] = useState({ challenges: 0, won: 0, sessions: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+
+      const [{ data: profileData }, { data: challengesData }, { data: sessionsData }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+        supabase.from("challenges").select("*").eq("user_id", user.id),
+        supabase.from("gym_sessions").select("*").eq("user_id", user.id).eq("approved", true),
+      ]);
+
+      setProfile(profileData);
+      const challenges = challengesData || [];
+      const won = challenges.filter((c: any) => c.status === "completed").length;
+      setStats({
+        challenges: challenges.length,
+        won,
+        sessions: sessionsData?.length || 0,
+      });
+      setLoading(false);
+    };
+
+    fetchProfile();
+  }, [user]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  const initials = profile?.username
+    ? profile.username.slice(0, 2).toUpperCase()
+    : user?.email?.slice(0, 2).toUpperCase() || "??";
+
+  const memberSince = user?.created_at
+    ? format(new Date(user.created_at), "MMM yyyy", { locale: fr })
+    : "";
+
   return (
     <div className="min-h-screen bg-background px-6 pt-10 pb-24">
-      {/* User Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-glass rounded-2xl p-6 mb-6 flex items-center gap-4"
       >
         <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center glow-box">
-          <span className="text-2xl font-display text-primary-foreground">JD</span>
+          <span className="text-2xl font-display text-primary-foreground">{initials}</span>
         </div>
         <div>
-          <h2 className="text-xl font-bold text-foreground">John Doe</h2>
-          <p className="text-sm text-muted-foreground">Membre depuis Fév 2026</p>
+          <h2 className="text-xl font-bold text-foreground">{profile?.username || user?.email}</h2>
+          <p className="text-sm text-muted-foreground">Membre depuis {memberSince}</p>
         </div>
       </motion.div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-glass rounded-xl p-3 text-center">
-          <span className="text-2xl font-display text-primary">2</span>
+          <span className="text-2xl font-display text-primary">{stats.challenges}</span>
           <p className="text-xs text-muted-foreground mt-1">Défis</p>
         </div>
         <div className="bg-glass rounded-xl p-3 text-center">
-          <span className="text-2xl font-display text-odds">1</span>
-          <p className="text-xs text-muted-foreground mt-1">Gagné</p>
+          <span className="text-2xl font-display text-odds">{stats.won}</span>
+          <p className="text-xs text-muted-foreground mt-1">Gagnés</p>
         </div>
         <div className="bg-glass rounded-xl p-3 text-center">
-          <span className="text-2xl font-display text-foreground">87%</span>
-          <p className="text-xs text-muted-foreground mt-1">Taux</p>
+          <span className="text-2xl font-display text-foreground">{stats.sessions}</span>
+          <p className="text-xs text-muted-foreground mt-1">Séances</p>
         </div>
       </div>
 
-      {/* Menu */}
       <div className="space-y-2">
         {menuItems.map((item, i) => (
           <motion.button
@@ -66,8 +120,10 @@ const Profile = () => {
         ))}
       </div>
 
-      {/* Logout */}
-      <button className="w-full mt-6 py-3 rounded-xl border border-destructive/30 text-destructive text-sm font-medium flex items-center justify-center gap-2">
+      <button
+        onClick={handleSignOut}
+        className="w-full mt-6 py-3 rounded-xl border border-destructive/30 text-destructive text-sm font-medium flex items-center justify-center gap-2"
+      >
         <LogOut className="w-4 h-4" />
         Se déconnecter
       </button>
