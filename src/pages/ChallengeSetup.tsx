@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Minus, Plus, TrendingUp, AlertTriangle, Loader2 } from "lucide-react";
+import { Minus, Plus, TrendingUp, AlertTriangle, Loader2, Coins } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { addMonths } from "date-fns";
+import { calculateCoins } from "@/lib/coins";
 
 const ChallengeSetup = () => {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ const ChallengeSetup = () => {
     return Math.round(sessionFactor * monthFactor * 10) / 10;
   }, [sessionsPerWeek, months]);
 
-  const rewardValue = useMemo(() => Math.round(bet * odds), [bet, odds]);
+  const coinsReward = useMemo(() => calculateCoins(bet, months, sessionsPerWeek), [bet, months, sessionsPerWeek]);
 
   const difficultyLabel = odds < 2 ? "FACILE" : odds < 3 ? "MOYEN" : odds < 4 ? "DIFFICILE" : "EXTRÊME";
   const difficultyColor = odds < 2 ? "text-success" : odds < 3 ? "text-odds" : odds < 4 ? "text-warning" : "text-destructive";
@@ -39,6 +40,7 @@ const ChallengeSetup = () => {
       duration_months: months,
       bet_amount: bet,
       odds_multiplier: odds,
+      coins_reward: coinsReward,
       status: "active",
       start_date: startDate.toISOString().split("T")[0],
       end_date: endDate.toISOString().split("T")[0],
@@ -108,17 +110,18 @@ const ChallengeSetup = () => {
           </div>
         </div>
 
-        {/* Odds Card */}
+        {/* Coins Card */}
         <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-glass rounded-xl p-5 mb-4 border border-primary/20">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-odds" />
-              <span className="text-sm text-muted-foreground uppercase tracking-wider">Ta cote</span>
+              <Coins className="w-5 h-5 text-odds" />
+              <span className="text-sm text-muted-foreground uppercase tracking-wider">Pièces à gagner</span>
             </div>
             <span className={`text-sm font-bold uppercase ${difficultyColor}`}>{difficultyLabel}</span>
           </div>
           <div className="text-center">
-            <span className="text-6xl font-display text-odds">{odds}x</span>
+            <span className="text-6xl font-display text-odds">{coinsReward}</span>
+            <span className="text-2xl font-display text-odds ml-1">🪙</span>
           </div>
         </motion.div>
 
@@ -134,8 +137,8 @@ const ChallengeSetup = () => {
           </div>
           <div className="h-px bg-border my-3" />
           <div className="flex justify-between items-center">
-            <span className="text-muted-foreground text-sm">🎁 Valeur récompense</span>
-            <span className="text-primary font-bold text-lg">{rewardValue}€</span>
+            <span className="text-muted-foreground text-sm">🪙 Pièces gagnées</span>
+            <span className="text-primary font-bold text-lg">{coinsReward} 🪙</span>
           </div>
         </div>
 

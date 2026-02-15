@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Camera, CheckCircle2, Flame, Trophy, CalendarDays, TrendingUp, Loader2 } from "lucide-react";
+import { Camera, CheckCircle2, Flame, Trophy, CalendarDays, Coins, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import PhotoVerification from "@/components/PhotoVerification";
@@ -176,17 +176,17 @@ const Dashboard = () => {
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-glass rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 h-4 text-odds" />
-            <span className="text-xs text-muted-foreground">COTE</span>
+            <Trophy className="w-4 h-4 text-odds" />
+            <span className="text-xs text-muted-foreground">MISE TOTALE</span>
           </div>
-          <span className="text-3xl font-display text-odds">{odds}x</span>
+          <span className="text-3xl font-display text-odds">{bet * months}€</span>
         </div>
         <div className="bg-glass rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Trophy className="w-4 h-4 text-primary" />
-            <span className="text-xs text-muted-foreground">RÉCOMPENSE</span>
+            <Coins className="w-4 h-4 text-primary" />
+            <span className="text-xs text-muted-foreground">PIÈCES</span>
           </div>
-          <span className="text-3xl font-display text-primary">{Math.round(bet * odds)}€</span>
+          <span className="text-3xl font-display text-primary">{challenge.coins_reward} 🪙</span>
         </div>
       </div>
 

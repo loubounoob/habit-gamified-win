@@ -6,12 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 const rewards = [
-  { id: 1, name: "T-Shirt Sport", brand: "Nike", minValue: 30, emoji: "👕" },
-  { id: 2, name: "Shaker Premium", brand: "BlenderBottle", minValue: 50, emoji: "🥤" },
-  { id: 3, name: "Brassière / Débardeur", brand: "Under Armour", minValue: 80, emoji: "🏋️" },
-  { id: 4, name: "Chaussures de Training", brand: "Adidas", minValue: 120, emoji: "👟" },
-  { id: 5, name: "Tenue Complète", brand: "Nike", minValue: 200, emoji: "🔥" },
-  { id: 6, name: "Pack Premium", brand: "Multi-marques", minValue: 350, emoji: "🏆" },
+  { id: 1, name: "T-Shirt Sport", brand: "Nike", minValue: 50, emoji: "👕" },
+  { id: 2, name: "Shaker Premium", brand: "BlenderBottle", minValue: 100, emoji: "🥤" },
+  { id: 3, name: "Brassière / Débardeur", brand: "Under Armour", minValue: 200, emoji: "🏋️" },
+  { id: 4, name: "Chaussures de Training", brand: "Adidas", minValue: 400, emoji: "👟" },
+  { id: 5, name: "Tenue Complète", brand: "Nike", minValue: 800, emoji: "🔥" },
+  { id: 6, name: "Pack Premium", brand: "Multi-marques", minValue: 1500, emoji: "🏆" },
 ];
 
 const Rewards = () => {
@@ -33,7 +33,7 @@ const Rewards = () => {
         .maybeSingle();
 
       if (challenge) {
-        setCurrentRewardValue(Math.round(challenge.bet_amount * Number(challenge.odds_multiplier)));
+        setCurrentRewardValue(challenge.coins_reward || 0);
       }
       setLoading(false);
     };
@@ -53,23 +53,23 @@ const Rewards = () => {
     <div className="min-h-screen bg-background px-6 pt-10 pb-24">
       <h1 className="text-3xl font-display text-foreground mb-1">RÉCOMPENSES</h1>
       <p className="text-muted-foreground text-sm mb-6">
-        Valeur actuelle de ta récompense : <span className="text-primary font-bold">{currentRewardValue}€</span>
+        Pièces actuelles : <span className="text-primary font-bold">{currentRewardValue} 🪙</span>
       </p>
 
       <div className="bg-glass rounded-xl p-5 mb-6">
         <div className="flex justify-between text-xs text-muted-foreground mb-2">
-          <span>0€</span>
-          <span>350€+</span>
+          <span>0 🪙</span>
+          <span>1500+ 🪙</span>
         </div>
         <div className="h-3 bg-secondary rounded-full overflow-hidden relative">
           <motion.div
             initial={{ width: 0 }}
-            animate={{ width: `${Math.min((currentRewardValue / 350) * 100, 100)}%` }}
+            animate={{ width: `${Math.min((currentRewardValue / 1500) * 100, 100)}%` }}
             transition={{ duration: 1, ease: "easeOut" }}
             className="h-full gradient-primary rounded-full glow-box"
           />
           {rewards.map((r) => (
-            <div key={r.id} className="absolute top-1/2 -translate-y-1/2 w-1 h-5 bg-background/50" style={{ left: `${(r.minValue / 350) * 100}%` }} />
+            <div key={r.id} className="absolute top-1/2 -translate-y-1/2 w-1 h-5 bg-background/50" style={{ left: `${(r.minValue / 1500) * 100}%` }} />
           ))}
         </div>
       </div>
@@ -102,7 +102,7 @@ const Rewards = () => {
               </div>
               <div className="text-right">
                 <span className={`text-sm font-display ${unlocked ? "text-primary" : isNext ? "text-odds" : "text-muted-foreground"}`}>
-                  {reward.minValue}€+
+                  {reward.minValue} 🪙
                 </span>
               </div>
             </motion.div>

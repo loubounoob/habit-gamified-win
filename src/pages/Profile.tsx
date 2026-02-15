@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { User, Bell, MapPin, CreditCard, LogOut, ChevronRight, Shield, Loader2 } from "lucide-react";
+import { User, Bell, MapPin, CreditCard, LogOut, ChevronRight, Shield, Loader2, Coins } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,7 +20,7 @@ const Profile = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
-  const [stats, setStats] = useState({ challenges: 0, won: 0, sessions: 0 });
+  const [stats, setStats] = useState({ challenges: 0, won: 0, sessions: 0, totalCoins: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,10 +36,12 @@ const Profile = () => {
       setProfile(profileData);
       const challenges = challengesData || [];
       const won = challenges.filter((c: any) => c.status === "completed").length;
+      const totalCoins = challenges.reduce((sum: number, c: any) => sum + (c.coins_reward || 0), 0);
       setStats({
         challenges: challenges.length,
         won,
         sessions: sessionsData?.length || 0,
+        totalCoins,
       });
       setLoading(false);
     };
@@ -84,7 +86,7 @@ const Profile = () => {
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-4 gap-3 mb-6">
         <div className="bg-glass rounded-xl p-3 text-center">
           <span className="text-2xl font-display text-primary">{stats.challenges}</span>
           <p className="text-xs text-muted-foreground mt-1">Défis</p>
@@ -96,6 +98,10 @@ const Profile = () => {
         <div className="bg-glass rounded-xl p-3 text-center">
           <span className="text-2xl font-display text-foreground">{stats.sessions}</span>
           <p className="text-xs text-muted-foreground mt-1">Séances</p>
+        </div>
+        <div className="bg-glass rounded-xl p-3 text-center">
+          <span className="text-2xl font-display text-primary">{stats.totalCoins}</span>
+          <p className="text-xs text-muted-foreground mt-1">🪙 Pièces</p>
         </div>
       </div>
 
