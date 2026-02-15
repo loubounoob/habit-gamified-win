@@ -17,6 +17,7 @@ export type Database = {
       challenges: {
         Row: {
           bet_amount: number
+          coins_reward: number
           created_at: string
           duration_months: number
           end_date: string | null
@@ -30,6 +31,7 @@ export type Database = {
         }
         Insert: {
           bet_amount?: number
+          coins_reward?: number
           created_at?: string
           duration_months?: number
           end_date?: string | null
@@ -43,6 +45,7 @@ export type Database = {
         }
         Update: {
           bet_amount?: number
+          coins_reward?: number
           created_at?: string
           duration_months?: number
           end_date?: string | null

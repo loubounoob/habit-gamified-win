@@ -1,0 +1,1 @@
+ALTER TABLE public.challenges ADD COLUMN coins_reward INTEGER NOT NULL DEFAULT 0;
