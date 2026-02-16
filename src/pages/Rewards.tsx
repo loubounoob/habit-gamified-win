@@ -1,28 +1,35 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Lock, Check, Loader2 } from "lucide-react";
+import { Lock, Check, Loader2, ShoppingBag } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import { CartDrawer } from "@/components/CartDrawer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { storefrontApiRequest, STOREFRONT_PRODUCTS_QUERY, type ShopifyProduct } from "@/lib/shopify";
+import { useCartStore } from "@/stores/cartStore";
+import { toast } from "sonner";
 
-const rewards = [
-  { id: 1, name: "T-Shirt Sport", brand: "Nike", minValue: 50, emoji: "👕" },
-  { id: 2, name: "Shaker Premium", brand: "BlenderBottle", minValue: 100, emoji: "🥤" },
-  { id: 3, name: "Brassière / Débardeur", brand: "Under Armour", minValue: 200, emoji: "🏋️" },
-  { id: 4, name: "Chaussures de Training", brand: "Adidas", minValue: 400, emoji: "👟" },
-  { id: 5, name: "Tenue Complète", brand: "Nike", minValue: 800, emoji: "🔥" },
-  { id: 6, name: "Pack Premium", brand: "Multi-marques", minValue: 1500, emoji: "🏆" },
+const rewardTiers = [
+  { minValue: 50, tag: "50coins", emoji: "👕" },
+  { minValue: 100, tag: "100coins", emoji: "🥤" },
+  { minValue: 200, tag: "200coins", emoji: "🏋️" },
+  { minValue: 400, tag: "400coins", emoji: "👟" },
+  { minValue: 800, tag: "800coins", emoji: "🔥" },
+  { minValue: 1500, tag: "1500coins", emoji: "🏆" },
 ];
 
 const Rewards = () => {
   const { user } = useAuth();
   const [currentRewardValue, setCurrentRewardValue] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<ShopifyProduct[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const addItem = useCartStore(state => state.addItem);
+  const isCartLoading = useCartStore(state => state.isLoading);
 
   useEffect(() => {
     const fetchRewardValue = async () => {
       if (!user) return;
-
       const { data: challenge } = await supabase
         .from("challenges")
         .select("*")
@@ -38,8 +45,46 @@ const Rewards = () => {
       setLoading(false);
     };
 
+    const fetchProducts = async () => {
+      try {
+        const data = await storefrontApiRequest(STOREFRONT_PRODUCTS_QUERY, {
+          first: 20,
+          query: "tag:reward",
+        });
+        if (data?.data?.products?.edges) {
+          setProducts(data.data.products.edges);
+        }
+      } catch (error) {
+        console.error("Failed to fetch products:", error);
+      }
+      setProductsLoading(false);
+    };
+
     fetchRewardValue();
+    fetchProducts();
   }, [user]);
+
+  const getProductForTier = (tag: string): ShopifyProduct | undefined => {
+    return products.find(p => {
+      const desc = p.node.description?.toLowerCase() || '';
+      return desc.includes(tag.replace('coins', ' coins'));
+    });
+  };
+
+  const handleClaim = async (product: ShopifyProduct) => {
+    const variant = product.node.variants.edges[0]?.node;
+    if (!variant) return;
+
+    await addItem({
+      product,
+      variantId: variant.id,
+      variantTitle: variant.title,
+      price: variant.price,
+      quantity: 1,
+      selectedOptions: variant.selectedOptions || [],
+    });
+    toast.success("Ajouté au panier !", { description: product.node.title });
+  };
 
   if (loading) {
     return (
@@ -51,11 +96,15 @@ const Rewards = () => {
 
   return (
     <div className="min-h-screen bg-background px-6 pt-10 pb-24">
-      <h1 className="text-3xl font-display text-foreground mb-1">RÉCOMPENSES</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-3xl font-display text-foreground">RÉCOMPENSES</h1>
+        <CartDrawer />
+      </div>
       <p className="text-muted-foreground text-sm mb-6">
         Pièces actuelles : <span className="text-primary font-bold">{currentRewardValue} 🪙</span>
       </p>
 
+      {/* Progress bar */}
       <div className="bg-glass rounded-xl p-5 mb-6">
         <div className="flex justify-between text-xs text-muted-foreground mb-2">
           <span>0 🪙</span>
@@ -68,19 +117,22 @@ const Rewards = () => {
             transition={{ duration: 1, ease: "easeOut" }}
             className="h-full gradient-primary rounded-full glow-box"
           />
-          {rewards.map((r) => (
-            <div key={r.id} className="absolute top-1/2 -translate-y-1/2 w-1 h-5 bg-background/50" style={{ left: `${(r.minValue / 1500) * 100}%` }} />
+          {rewardTiers.map((r) => (
+            <div key={r.tag} className="absolute top-1/2 -translate-y-1/2 w-1 h-5 bg-background/50" style={{ left: `${(r.minValue / 1500) * 100}%` }} />
           ))}
         </div>
       </div>
 
+      {/* Reward cards with Shopify products */}
       <div className="space-y-3">
-        {rewards.map((reward, i) => {
-          const unlocked = currentRewardValue >= reward.minValue;
-          const isNext = !unlocked && (i === 0 || currentRewardValue >= rewards[i - 1].minValue);
+        {rewardTiers.map((tier, i) => {
+          const unlocked = currentRewardValue >= tier.minValue;
+          const isNext = !unlocked && (i === 0 || currentRewardValue >= rewardTiers[i - 1].minValue);
+          const product = getProductForTier(tier.tag);
+
           return (
             <motion.div
-              key={reward.id}
+              key={tier.tag}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.08 }}
@@ -91,19 +143,39 @@ const Rewards = () => {
               <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl ${
                 unlocked ? "gradient-primary glow-box" : "bg-secondary"
               }`}>
-                {unlocked ? reward.emoji : <Lock className="w-5 h-5 text-muted-foreground" />}
+                {product?.node.images?.edges?.[0]?.node ? (
+                  <img
+                    src={product.node.images.edges[0].node.url}
+                    alt={product.node.title}
+                    className="w-full h-full object-cover rounded-xl"
+                  />
+                ) : unlocked ? tier.emoji : <Lock className="w-5 h-5 text-muted-foreground" />}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className={`font-bold text-sm ${unlocked ? "text-foreground" : "text-muted-foreground"}`}>{reward.name}</span>
+                  <span className={`font-bold text-sm ${unlocked ? "text-foreground" : "text-muted-foreground"}`}>
+                    {product?.node.title || `Récompense ${tier.minValue} 🪙`}
+                  </span>
                   {unlocked && <Check className="w-4 h-4 text-primary" />}
                 </div>
-                <span className="text-xs text-muted-foreground">{reward.brand}</span>
-              </div>
-              <div className="text-right">
-                <span className={`text-sm font-display ${unlocked ? "text-primary" : isNext ? "text-odds" : "text-muted-foreground"}`}>
-                  {reward.minValue} 🪙
+                <span className="text-xs text-muted-foreground">
+                  {product ? product.node.description?.slice(0, 60) + '...' : ''}
                 </span>
+              </div>
+              <div className="text-right flex flex-col items-end gap-1">
+                <span className={`text-sm font-display ${unlocked ? "text-primary" : isNext ? "text-odds" : "text-muted-foreground"}`}>
+                  {tier.minValue} 🪙
+                </span>
+                {unlocked && product && (
+                  <button
+                    onClick={() => handleClaim(product)}
+                    disabled={isCartLoading || productsLoading}
+                    className="text-xs gradient-primary text-primary-foreground px-3 py-1 rounded-lg font-bold flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <ShoppingBag className="w-3 h-3" />
+                    Réclamer
+                  </button>
+                )}
               </div>
             </motion.div>
           );
